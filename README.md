@@ -1,20 +1,23 @@
-# Node ESI Language parser
+# Node ESI Language parser Core Module
 
-[![Build Status](https://travis-ci.org/MrSwitch/esi.svg?branch=master)](https://travis-ci.org/MrSwitch/esi)
+[![Build Status](https://travis-ci.org/oculus42/esi.svg?branch=master)](https://travis-ci.org/oculus42/esi)
 
 [Edge Side Includes](http://www.w3.org/TR/esi-lang) (ESI) Language is a templating language supported by popular CDN's such as Akamai and Varnish. This NPM module will preprocess ESI tags within your node server environment.
 
+# TODO
 
+ * Remove the middleware wrapper
+ * Update tests to validate the core module
 
 # Example
-You want to embed the fragment of HTML from "http://snipets.com/abc.html" within an HTML document.
+You want to embed the fragment of HTML from "http://snippets.com/abc.html" within an HTML document.
 
-    blah blah, oh and here i embed in the page a snipet using an ESI server ...
-    <esi:include src="http://snipets.com/snipet.html"></esi:include>
+    blah blah, oh and here i embed in the page a snippet using an ESI server ...
+    <esi:include src="http://snippets.com/snippet.html"></esi:include>
 
-**snipet.html**
+**snippet.html**
 
-    <b>Snipet</b>
+    <b>Snippet</b>
 
 
 With Node ESI script, you can pre-process ESI tags. 
@@ -36,12 +39,8 @@ Simply pass it into any service which uses http.createServer, e.g. below i'm usi
 
 Now the page is constructed and the response looks like this...
 
-    blah blah, oh and here i embed in the page a snipet using an ESI server ...
-    <b>Snipet</b>
-
-
-
-
+    blah blah, oh and here i embed in the page a snippet using an ESI server ...
+    <b>Snippet</b>
 
 
 # Specs
@@ -49,10 +48,6 @@ Now the page is constructed and the response looks like this...
 View [the ESI specs](https://travis-ci.org/MrSwitch/esi) or from the install directory run.
 
     mocha specs -R spec
-
-
-
-
 
 
 # Options
