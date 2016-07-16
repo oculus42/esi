@@ -278,9 +278,9 @@ function processESIInclude(attrs, body, VARS) {
 function processESITry(body, VARS) {
 
   // Separate the contents of the esi:try block to esi:attempt and esi:except
-  var parts = splitText(body),
-    attempt,
-    except;
+  var parts = splitText(body);
+  var attempt;
+  var except;
 
 
   // Process the contents of the ESI block,
@@ -348,7 +348,8 @@ function processESICondition(test, VARS) {
 
   // There can be multiple tests
   var tests = test.split(reg_esi_condition_separator);
-  var bool, matches;
+  var bool;
+  var matches;
 
   for (var i = 0; i < tests.length; i++) {
 
