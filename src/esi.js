@@ -6,6 +6,7 @@
  */
 
 const http = require('http');
+const Promise = require('promise');
 
 // Expressions used by main function to process ESI
 const reg_esi_tag = /<(esi\:[a-z]+)\b([^>]+[^\/>])?(?:\/|>([\s\S]*?)<\/\1)>/i;

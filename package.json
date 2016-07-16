@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Edge Side Includes Core Library for Node environments ",
   "main": "index.js",
+  "dependencies": {
+    "promise": "^7.1.1"
+  },
   "devDependencies": {
     "chai": "^3.5.0",
     "chai-as-promised": "^5.3.0",
