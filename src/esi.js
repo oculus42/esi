@@ -21,28 +21,24 @@ module.exports = ESI;
 // @return Promise
 
 function ESI( body, encoding, VARS, isInEsiTag ){
-	// By default, `isInEsiTag` will be true.
-	var isInEsiTag = typeof isInEsiTag !== 'undefined' ? isInEsiTag : true;
+
+	const insideTag = isInEsiTag !== undefined ? isInEsiTag : true;
+
 	// Format incoming
-
-	if( typeof (body) !== 'string' ){
-		body = (body || '').toString();
-	}
-
+	const bodyString = (typeof body == 'string') ? body : (body || '').toString();
 
 	// Trim any <!--esi --> comment tags off
-	body = body.replace(reg_esi_comments, '<esi:vars>$1</esi:vars>');
-
+	const bodyNoComments = bodyString.replace(reg_esi_comments, '<esi:vars>$1</esi:vars>');
 
 
 	// Split the current string into parts, some including the ESI fragment and then the bits in between
 	// Loop through and process each of the ESI fragments, mapping them back to a parts array containing strings and the Promise objects
-	var parts = splitText( body ).map(function(splittedBody) {
+	const parts = splitText( bodyNoComments ).map(function(bodyFragment) {
 		// Only process ESI tags for matching regex or if current body is in previous ESI tag.
-		if(isInEsiTag || splittedBody.match(reg_esi_tag)) {
-			return processESITags.bind(VARS)(splittedBody);
+		if (insideTag || bodyFragment.match(reg_esi_tag)) {
+			return processESITags.call(VARS, bodyFragment);
 		}
-		return splittedBody;
+		return bodyFragment;
 	});
 
 	// Create the mother of all promises, to process all the child operations into a single resolve.
