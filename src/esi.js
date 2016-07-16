@@ -21,7 +21,7 @@ const reg_esi_comments = /<\!--esi\b([\s\S]*?)-->/gi;
  * @param {Boolean} isInEsiTag - defaults to true
  * @returns {Promise}
  */
-function ESI( body, encoding, VARS, isInEsiTag ){
+function processESI(body, encoding, VARS, isInEsiTag ){
 
 	const insideTag = isInEsiTag !== undefined ? isInEsiTag : true;
 
@@ -52,7 +52,6 @@ function ESI( body, encoding, VARS, isInEsiTag ){
 }
 
 
-
 /**
  * Process ESI tags
  * Given a section of the body string, if it is a esi tag process it and return a Promise object, otherwise return a string.
@@ -72,7 +71,6 @@ function processESITags(str){
 		// Do a quick dictionary replace and spit it back
 		return DictionaryReplace( str, this );
 	}
-
 
 	// Reference the different parts of the node
 
@@ -96,8 +94,8 @@ function processESITags(str){
 
 		// Call the esi:choose as a block
 		case 'esi:choose':
-			// ESI
-			var r = ESI( body, null, this );
+			// processESI
+			var r = processESI( body, null, this );
 
 			// RESET MATCHES
 			if( this.hasOwnProperty('MATCHES') ){
@@ -125,7 +123,7 @@ function processESITags(str){
 					log( log.INFO, 'esi:when', attrs.test );
 
 					// Execute this block of code
-					return ESI( body, null, this );
+					return processESI( body, null, this );
 				}
 			}
 			// Otherwise lets not include this block in the response
@@ -141,7 +139,7 @@ function processESITags(str){
 			log( log.INFO, 'esi:otherwise' );
 
 			// Otherwise, process the esi:otherwise block
-			return ESI( body, null, this );
+			return processESI( body, null, this );
 
 		case 'esi:assign':
 
@@ -169,7 +167,6 @@ function processESITags(str){
 	// All else, return empty string...
 	return str;
 }
-
 
 
 /**
@@ -243,9 +240,9 @@ function processESIInclude(attrs, body, VARS){
 
 			log( log.INFO, 'esi:include', src );
 
-			// Run the Response back through ESI?
+			// Run the Response back through processESI?
 			if(attrs.dca === 'esi'){
-				return ESI( body, null, VARS );
+				return processESI( body, null, VARS );
 			}
 			else {
 				return body;
@@ -300,23 +297,21 @@ function processESITry( body, VARS ){
 		}
 	}
 
-
 	// Log
 	log( log.INFO, 'esi:attempt' );
 
 	// Run through esi processing
 
-	return ESI( attempt, null, VARS ).then( null, function(){
+	return processESI( attempt, null, VARS ).then( null, function(){
 
 		log( log.WARN, 'esi:except' );
 
 		// Should that fail, return the except
-		return ESI( except, null, VARS );
+		return processESI( except, null, VARS );
 
 	});
 
 }
-
 
 
 /**
@@ -334,9 +329,8 @@ function processESIVars(attrs, body, VARS){
 		return DictionaryReplace( attrs.name, VARS );
 	}
 
-	return ESI(body, null, VARS);
+	return processESI(body, null, VARS);
 }
-
 
 
 const reg_trim = /(^\s+|\s+$)/;
@@ -370,7 +364,7 @@ function processESICondition( test, VARS ){
 		}
 
 
-		// Does it have a negatory operator
+		// Does it have a negation operator
 		var negatory = test[0] === '!';
 		test.replace(/^\!/,'');
 
@@ -497,7 +491,6 @@ function makeRequest( url, resolve, reject ){
 }
 
 
-
 const reg_esi_tag_global = new RegExp(reg_esi_tag.source, 'gi');
 
 /**
@@ -520,7 +513,6 @@ function splitText(str){
 
 	return r;
 }
-
 
 
 const reg_attrs = /\b([^\s=]+)(=(('|")(.*?[^\\]|)\4|[^\s]+))?/ig;
@@ -569,10 +561,6 @@ function DictionaryReplace(str, hash){
 }
 
 
-
-
-
-
 /**
  * log
  * @param state
@@ -600,4 +588,4 @@ function log( state, label, value){
 
 })();
 
-module.exports = ESI;
+module.exports = processESI;
