@@ -4,7 +4,6 @@
  * Core ESI Logic extracted from the middleware wrapper
  * Updated for Node 4.x and later
  */
-'use strict';
 
 const http = require('http');
 
