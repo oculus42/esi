@@ -45,7 +45,8 @@ function processESI(body, encoding, VARS, isInEsiTag) {
     return bodyFragment;
   });
 
-  // Create the mother of all promises, to process all the child operations into a single resolve.
+  // Create the mother of all promises.
+  // Process all the child operations into a single resolve.
 
   return Promise.all(parts).then(function(response) {
 
@@ -182,6 +183,7 @@ function processESITags(str) {
  */
 function processESIInclude(attrs, body, VARS) {
 
+  // TODO: Support esi:params in body
 
   // Clone the VARS
   // Set the prototype
