@@ -185,8 +185,9 @@ function processESIInclude(attrs, body, VARS){
 
 	if( !attrs.src ){
 
-		// Urgh this should have contained a src attibute
+		// Include must contain a src attribute
 		// Just spit it back, its not in a correct format
+        // TODO - This should error
 		log( log.FAIL, 'esi:include', 'Missing src attribute' );
 		return '';
 	}
@@ -335,7 +336,7 @@ var reg_esi_condition_separator = /\s+(\|\||\&\&)\s+/g;
 
 function processESICondition( test, VARS ){
 
-	// There can be mmultiple tests
+	// There can be multiple tests
 	var tests = test.split(reg_esi_condition_separator);
 	var bool, matches;
 
