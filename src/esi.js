@@ -1,25 +1,26 @@
-//
-// ESI
-//
+/*
+ * ESI Core
+ * Forked from https://github.com/MrSwitch/esi
+ * Core ESI Logic extracted from the middleware wrapper
+ * Updated for Node 4.x and later
+ */
 
-// This is already a part of the global
-var Promise = require('promise');
+const http = require('http');
 
-var http = require('http');
-
-
-
-var reg_esi_tag = /<(esi\:[a-z]+)\b([^>]+[^\/>])?(?:\/|>([\s\S]*?)<\/\1)>/i;
-var reg_esi_comments = /<\!--esi\b([\s\S]*?)-->/gi;
-
-module.exports = ESI;
+// Expressions used by main function to process ESI
+const reg_esi_tag = /<(esi\:[a-z]+)\b([^>]+[^\/>])?(?:\/|>([\s\S]*?)<\/\1)>/i;
+const reg_esi_comments = /<\!--esi\b([\s\S]*?)-->/gi;
 
 
-
-// The main point of entry
-// Given an body of text, break it down into strings and Promise objects
-// @return Promise
-
+/**
+ * The main point of entry
+ * Given an body of text, break it down into strings and Promise objects
+ * @param {string} body Input string
+ * @param {*} encoding Currently Unused
+ * @param {Object} VARS Input variables
+ * @param {Boolean} isInEsiTag - defaults to true
+ * @returns {Promise}
+ */
 function ESI( body, encoding, VARS, isInEsiTag ){
 
 	const insideTag = isInEsiTag !== undefined ? isInEsiTag : true;
@@ -52,10 +53,12 @@ function ESI( body, encoding, VARS, isInEsiTag ){
 
 
 
-
-// Process ESI tags
-// Given a section of the body string, if it is a esi tag process it and return a Promise object, otherwise return a string.
-
+/**
+ * Process ESI tags
+ * Given a section of the body string, if it is a esi tag process it and return a Promise object, otherwise return a string.
+ * @param {string} str
+ * @returns {string|Promise}
+ */
 function processESITags(str){
 
 	// Get Tag Attributes in an object
@@ -76,8 +79,6 @@ function processESITags(str){
 	var tag = m[1];
 	var attrs = getAttributes(m[2]);
 	var body = m[3];
-
-
 
 	switch(tag){
 
@@ -171,10 +172,13 @@ function processESITags(str){
 
 
 
-//
-// Process ESI include
-//
-
+/**
+ * Process ESI include
+ * @param {Object} attrs Attributes of the tag
+ * @param {string} body body string
+ * @param {Object} VARS current variables
+ * @returns {Promise}
+ */
 function processESIInclude(attrs, body, VARS){
 
 
@@ -265,10 +269,12 @@ function processESIInclude(attrs, body, VARS){
 }
 
 
-//
-// Run the contents of the ESI attempt block
-//
-
+/**
+ * Run the contents of the ESI attempt block
+ * @param {string} body
+ * @param {Object} VARS
+ * @returns {Promise}
+ */
 function processESITry( body, VARS ){
 
 	// Seperate out the contents of the esi:try block to be esi:attempt and esi:except
@@ -313,9 +319,13 @@ function processESITry( body, VARS ){
 
 
 
-
-// Process ESI Vars
-
+/**
+ * Process ESI Vars
+ * @param {Object} attrs
+ * @param {string{ body
+ * @param {Object} VARS
+ * @returns {Promise}
+ */
 function processESIVars(attrs, body, VARS){
 
 	log( log.INFO, 'esi:vars' );
@@ -329,11 +339,16 @@ function processESIVars(attrs, body, VARS){
 
 
 
-// Process a conditiional test
-var reg_trim = /(^\s+|\s+$)/;
-var reg_esi_condition = /^(.*?)\s+(=|==|<=|>=|matches|matches_i|has|has_i)\s+('''|)(.*?)\3$/;
-var reg_esi_condition_separator = /\s+(\|\||\&\&)\s+/g;
+const reg_trim = /(^\s+|\s+$)/;
+const reg_esi_condition = /^(.*?)\s+(=|==|<=|>=|matches|matches_i|has|has_i)\s+('''|)(.*?)\3$/;
+const reg_esi_condition_separator = /\s+(\|\||\&\&)\s+/g;
 
+/**
+ * Process a conditional test
+ * @param {string} test
+ * @param {Object} VARS
+ * @returns {Boolean}
+ */
 function processESICondition( test, VARS ){
 
 	// There can be multiple tests
@@ -415,8 +430,12 @@ function processESICondition( test, VARS ){
 }
 
 
-// Process ESI Expression
-
+/**
+ * Process ESI Expression
+ * @param txt
+ * @param VARS
+ * @returns {*}
+ */
 function processESIExpression(txt, VARS){
 
 	// Tidy
@@ -432,8 +451,12 @@ function processESIExpression(txt, VARS){
 }
 
 
-// Make an HTTP request for a resource
-
+/**
+ * Make an HTTP request for a resource
+ * @param {string} url
+ * @param {Function} resolve Resolver of the parent Promise
+ * @param {Function} reject Rejector of the parent Promise
+ */
 function makeRequest( url, resolve, reject ){
 
 	//log( log.INFO, url );
@@ -475,8 +498,13 @@ function makeRequest( url, resolve, reject ){
 
 
 
-var reg_esi_tag_global = new RegExp(reg_esi_tag.source, 'gi');
+const reg_esi_tag_global = new RegExp(reg_esi_tag.source, 'gi');
 
+/**
+ *
+ * @param {string} str
+ * @returns {Array}
+ */
 function splitText(str){
 
 	var i=0,
@@ -495,12 +523,14 @@ function splitText(str){
 
 
 
+const reg_attrs = /\b([^\s=]+)(=(('|")(.*?[^\\]|)\4|[^\s]+))?/ig;
 
+/**
+ * getAttributes
+ * @param {string} str
+ * @returns {Object}
+ */
 function getAttributes(str){
-
-// getAttributes
-
-var reg_attrs = /\b([^\s=]+)(=(('|")(.*?[^\\]|)\4|[^\s]+))?/ig;
 
 	var m,
         r={};
@@ -516,8 +546,15 @@ var reg_attrs = /\b([^\s=]+)(=(('|")(.*?[^\\]|)\4|[^\s]+))?/ig;
 //
 // Dictionary replace
 //
-var reg_esi_variable = /\$\((.*?)(?:\{([\d\w]+)\})?\)/g;
+const reg_esi_variable = /\$\((.*?)(?:\{([\d\w]+)\})?\)/g;
 
+/**
+ *
+ * @param str
+ * @param hash
+ * @returns {XML|string|void}
+ * @constructor
+ */
 function DictionaryReplace(str, hash){
 	return str.replace( reg_esi_variable, function (m, key, subkey){
 		if(key in hash){
@@ -536,8 +573,12 @@ function DictionaryReplace(str, hash){
 
 
 
-// log
-
+/**
+ * log
+ * @param state
+ * @param label
+ * @param value
+ */
 function log( state, label, value){
 
 	if( module.exports.debug ){
@@ -558,3 +599,5 @@ function log( state, label, value){
 	}
 
 })();
+
+module.exports = ESI;
