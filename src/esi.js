@@ -1,9 +1,10 @@
-/*
+/**
  * ESI Core
  * Forked from https://github.com/MrSwitch/esi
  * Core ESI Logic extracted from the middleware wrapper
  * Updated for Node 4.x and later
  */
+'use strict';
 
 const http = require('http');
 
@@ -21,34 +22,34 @@ const reg_esi_comments = /<\!--esi\b([\s\S]*?)-->/gi;
  * @param {Boolean} isInEsiTag - defaults to true
  * @returns {Promise}
  */
-function processESI(body, encoding, VARS, isInEsiTag ){
+function processESI(body, encoding, VARS, isInEsiTag) {
 
-	const insideTag = isInEsiTag !== undefined ? isInEsiTag : true;
+  const insideTag = isInEsiTag !== undefined ? isInEsiTag : true;
 
-	// Format incoming
-	const bodyString = (typeof body == 'string') ? body : (body || '').toString();
+  // Format incoming
+  const bodyString = (typeof body === 'string') ? body : (body || '').toString();
 
-	// Trim any <!--esi --> comment tags off
-	const bodyNoComments = bodyString.replace(reg_esi_comments, '<esi:vars>$1</esi:vars>');
+  // Trim any <!--esi --> comment tags off
+  const bodyNoComments = bodyString.replace(reg_esi_comments, '<esi:vars>$1</esi:vars>');
 
 
-	// Split the current string into parts, some including the ESI fragment and then the bits in between
-	// Loop through and process each of the ESI fragments, mapping them back to a parts array containing strings and the Promise objects
-	const parts = splitText( bodyNoComments ).map(function(bodyFragment) {
-		// Only process ESI tags for matching regex or if current body is in previous ESI tag.
-		if (insideTag || bodyFragment.match(reg_esi_tag)) {
-			return processESITags.call(VARS, bodyFragment);
-		}
-		return bodyFragment;
-	});
+  // Split the current string into parts, some including the ESI fragment and then the bits in between
+  // Loop through and process each of the ESI fragments, mapping them back to a parts array containing strings and the Promise objects
+  const parts = splitText(bodyNoComments).map(function(bodyFragment) {
+    // Only process ESI tags for matching regex or if current body is in previous ESI tag.
+    if (insideTag || bodyFragment.match(reg_esi_tag)) {
+      return processESITags.call(VARS, bodyFragment);
+    }
+    return bodyFragment;
+  });
 
-	// Create the mother of all promises, to process all the child operations into a single resolve.
+  // Create the mother of all promises, to process all the child operations into a single resolve.
 
-	return Promise.all(parts).then(function(response){
+  return Promise.all(parts).then(function(response) {
 
-		// Once all these have returned we can merge the parts together
-		return response.join('');
-	});
+    // Once all these have returned we can merge the parts together
+    return response.join('');
+  });
 }
 
 
@@ -58,114 +59,114 @@ function processESI(body, encoding, VARS, isInEsiTag ){
  * @param {string} str
  * @returns {string|Promise}
  */
-function processESITags(str){
+function processESITags(str) {
 
-	// Get Tag Attributes in an object
+  // Get Tag Attributes in an object
 
-	var m = str.match(reg_esi_tag);
+  var m = str.match(reg_esi_tag);
 
 
-	// Is this a tag?
-	if( !m ){
-		// Are there any items in here which are in the local dictionary
-		// Do a quick dictionary replace and spit it back
-		return DictionaryReplace( str, this );
-	}
+  // Is this a tag?
+  if (!m) {
+    // Are there any items in here which are in the local dictionary
+    // Do a quick dictionary replace and spit it back
+    return DictionaryReplace(str, this);
+  }
 
-	// Reference the different parts of the node
+  // Reference the different parts of the node
 
-	var tag = m[1];
-	var attrs = getAttributes(m[2]);
-	var body = m[3];
+  var tag = m[1];
+  var attrs = getAttributes(m[2]);
+  var body = m[3];
 
-	switch(tag){
+  switch (tag) {
 
-		// Replaces the content
-		case 'esi:include':
-			return processESIInclude( attrs, body, this );
+    // Replaces the content
+    case 'esi:include':
+      return processESIInclude(attrs, body, this);
 
-		// Replaces the content
-		case 'esi:try':
-			return processESITry( body, this );
+    // Replaces the content
+    case 'esi:try':
+      return processESITry(body, this);
 
-		// Apply variables to the block
-		case 'esi:vars':
-			return processESIVars( attrs, body, this );
+    // Apply variables to the block
+    case 'esi:vars':
+      return processESIVars(attrs, body, this);
 
-		// Call the esi:choose as a block
-		case 'esi:choose':
-			// processESI
-			var r = processESI( body, null, this );
+    // Call the esi:choose as a block
+    case 'esi:choose':
+      // processESI
+      var r = processESI(body, null, this);
 
-			// RESET MATCHES
-			if( this.hasOwnProperty('MATCHES') ){
-				delete this.MATCHES;
-			}
-			return r;
+      // RESET MATCHES
+      if (this.hasOwnProperty('MATCHES')) {
+        delete this.MATCHES;
+      }
+      return r;
 
-		// Check
-		case 'esi:when':
-			// Has the matches already returned a result?
-			if( !this.hasOwnProperty('MATCHES') ){
-				// Run the test
+    // Check
+    case 'esi:when':
+      // Has the matches already returned a result?
+      if (!this.hasOwnProperty('MATCHES')) {
+        // Run the test
 
-				var result = processESICondition( attrs.test, this );
-				if( result ){
-					// Store the result into a variable called matches
-					// This is used to infer that a match was successful
-					this.MATCHES = result;
+        var result = processESICondition(attrs.test, this);
+        if (result) {
+          // Store the result into a variable called matches
+          // This is used to infer that a match was successful
+          this.MATCHES = result;
 
-					// Has a label been assigned to the MATCHES
-					if( attrs.matchname ){
-						this[ attrs.matchname ] = result;
-					}
+          // Has a label been assigned to the MATCHES
+          if (attrs.matchname) {
+            this[ attrs.matchname ] = result;
+          }
 
-					log( log.INFO, 'esi:when', attrs.test );
+          log(log.INFO, 'esi:when', attrs.test);
 
-					// Execute this block of code
-					return processESI( body, null, this );
-				}
-			}
-			// Otherwise lets not include this block in the response
-			return '';
+          // Execute this block of code
+          return processESI(body, null, this);
+        }
+      }
+      // Otherwise lets not include this block in the response
+      return '';
 
-		case 'esi:otherwise':
+    case 'esi:otherwise':
 
-			// Has the previous esi:when condition already matched?
-			if( this.hasOwnProperty('MATCHES') ){
-				return '';
-			}
+      // Has the previous esi:when condition already matched?
+      if (this.hasOwnProperty('MATCHES')) {
+        return '';
+      }
 
-			log( log.INFO, 'esi:otherwise' );
+      log(log.INFO, 'esi:otherwise');
 
-			// Otherwise, process the esi:otherwise block
-			return processESI( body, null, this );
+      // Otherwise, process the esi:otherwise block
+      return processESI(body, null, this);
 
-		case 'esi:assign':
+    case 'esi:assign':
 
-			log( log.INFO, 'esi:assign', attrs.name + ' = ' + attrs.value );
+      log(log.INFO, 'esi:assign', attrs.name + ' = ' + attrs.value);
 
-			// Add to the dictionary
-			this[attrs.name] = processESIExpression( attrs.value, this );
+      // Add to the dictionary
+      this[attrs.name] = processESIExpression(attrs.value, this);
 
-			return '';
+      return '';
 
-		case 'esi:text':
+    case 'esi:text':
 
-			return body;
+      return body;
 
-		case 'esi:comment':
-		case 'esi:remove':
-			// All else, return empty string...
-			log( log.INFO, tag, 'expunged' );
-			return '';
-	}
+    case 'esi:comment':
+    case 'esi:remove':
+      // All else, return empty string...
+      log(log.INFO, tag, 'expunged');
+      return '';
+  }
 
-	// Warn
-	log( log.WARN, tag, 'unrecognised' );
+  // Warn
+  log(log.WARN, tag, 'unrecognised');
 
-	// All else, return empty string...
-	return str;
+  // All else, return empty string...
+  return str;
 }
 
 
@@ -176,93 +177,91 @@ function processESITags(str){
  * @param {Object} VARS current variables
  * @returns {Promise}
  */
-function processESIInclude(attrs, body, VARS){
+function processESIInclude(attrs, body, VARS) {
 
 
-	// Clone the VARS
-	// Set the prototype
-	VARS = Object.create(VARS||{});
+  // Clone the VARS
+  // Set the prototype
+  VARS = Object.create(VARS || {});
 
 
-	if( !attrs.src ){
+  if (!attrs.src) {
 
-		// Include must contain a src attribute
-		// Just spit it back, its not in a correct format
-        // TODO - This should error
-		log( log.FAIL, 'esi:include', 'Missing src attribute' );
-		return '';
-	}
+    // Include must contain a src attribute
+    // Just spit it back, its not in a correct format
+    // TODO - This should error
+    log(log.FAIL, 'esi:include', 'Missing src attribute');
+    return '';
+  }
 
-	// Set the src
-	var src = attrs.src;
+  // Set the src
+  var src = attrs.src;
 
-	// Replace the section with a new Promise object for this tag and add it to the Promise Array
+  // Replace the section with a new Promise object for this tag
+  // Add it to the Promise Array
+  return new Promise(function(resolve, reject) {
 
-	return new Promise(function( resolve, reject ){
+    // Make request
+    src = DictionaryReplace(attrs.src, VARS);
 
-		// Make request
-		src = DictionaryReplace( attrs.src, VARS );
+    makeRequest(src, resolve, reject);
 
-		makeRequest( src, resolve, reject );
+  })
 
-	})
+  // If this fails, check for an alt attribute
+  .then(
+    null,
+    function(err) {
 
-	// If this fails, check for an alt attribute
-	.then(
-		null,
-		function( err ){
+      // The response returned a responseState greater than 400
+      // Is there an alternative path?
 
-			// The response returned a responseState greater than 400
-			// Is there an alternative path?
+      if (attrs.alt) {
 
-			if( attrs.alt ){
+        log(log.WARN, 'esi:include', err);
 
-				log( log.WARN, 'esi:include', err );
+        // Make the request again
 
-				// Make the request again
+        return new Promise(function(resolve, reject) {
 
-				return new Promise( function( resolve, reject ){
+          src = DictionaryReplace(attrs.alt, VARS);
 
-					src = DictionaryReplace( attrs.alt, VARS );
+          makeRequest(src, resolve, reject);
 
-					makeRequest( src, resolve, reject );
+        });
+      }
 
-				});
-			}
+      // Nope continue with error
+      throw err;
+    }
+   )
 
-			// Nope continue with error
-			throw err;
-		}
-	)
+  // If all else fails
+  .then(function(body) {
 
-	// If all else fails
-	.then(function(body){
+    log(log.INFO, 'esi:include', src);
 
-			log( log.INFO, 'esi:include', src );
+    // Run the Response back through processESI?
+    if (attrs.dca === 'esi') {
+      return processESI(body, null, VARS);
+    } else {
+      return body;
+    }
 
-			// Run the Response back through processESI?
-			if(attrs.dca === 'esi'){
-				return processESI( body, null, VARS );
-			}
-			else {
-				return body;
-			}
+  },
+    function(err) {
 
-		},
-		function(err){
+      // The response returned a responseState greater than 400
+      log(log.FAIL, 'esi:include', err);
 
-			// The response returned a responseState greater than 400
-			log( log.FAIL, 'esi:include', err );
-
-			if( attrs.onerror === "continue" ){
-				// return an empty string
-				return '';
-			}
-			else{
-				throw err;
-			}
-		}
-	);
+      if (attrs.onerror === 'continue') {
+        // return an empty string
+        return '';
+      } else {
+        throw err;
+      }
+    }
+   );
 }
 
 
@@ -272,44 +271,42 @@ function processESIInclude(attrs, body, VARS){
  * @param {Object} VARS
  * @returns {Promise}
  */
-function processESITry( body, VARS ){
+function processESITry(body, VARS) {
 
-	// Seperate out the contents of the esi:try block to be esi:attempt and esi:except
+  // Separate the contents of the esi:try block to esi:attempt and esi:except
+  var parts = splitText(body),
+    attempt,
+    except;
 
-	var parts = splitText( body ),
-		attempt,
-		except;
 
+  // Process the contents of the ESI block,
+  // matching the esi:attempt and esi:except blocks
+  for (var i = 0; i < parts.length; i++) {
 
-	// Process the contents of the ESI block, matching the esi:attempt and esi:except blocks
+    var str = parts[i];
+    var m = str.match(reg_esi_tag);
+    var tag = m && m[1];
 
-	for(var i=0;i<parts.length;i++){
+    if (tag === 'esi:attempt') {
+      attempt = m[3];
+    } else if (tag === 'esi:except') {
+      except = m[3];
+    }
+  }
 
-		var str = parts[i];
-		var m = str.match(reg_esi_tag);
-		var tag = m && m[1];
+  // Log
+  log(log.INFO, 'esi:attempt');
 
-		if( tag === 'esi:attempt' ){
-			attempt = m[3];
-		}
-		else if ( tag === 'esi:except' ){
-			except = m[3];
-		}
-	}
+  // Run through esi processing
 
-	// Log
-	log( log.INFO, 'esi:attempt' );
+  return processESI(attempt, null, VARS).then(null, function() {
 
-	// Run through esi processing
+    log(log.WARN, 'esi:except');
 
-	return processESI( attempt, null, VARS ).then( null, function(){
+    // Should that fail, return the except
+    return processESI(except, null, VARS);
 
-		log( log.WARN, 'esi:except' );
-
-		// Should that fail, return the except
-		return processESI( except, null, VARS );
-
-	});
+  });
 
 }
 
@@ -317,19 +314,19 @@ function processESITry( body, VARS ){
 /**
  * Process ESI Vars
  * @param {Object} attrs
- * @param {string{ body
+ * @param {string} body
  * @param {Object} VARS
  * @returns {Promise}
  */
-function processESIVars(attrs, body, VARS){
+function processESIVars(attrs, body, VARS) {
 
-	log( log.INFO, 'esi:vars' );
+  log(log.INFO, 'esi:vars');
 
-	if( !body && attrs.name ){
-		return DictionaryReplace( attrs.name, VARS );
-	}
+  if (!body && attrs.name) {
+    return DictionaryReplace(attrs.name, VARS);
+  }
 
-	return processESI(body, null, VARS);
+  return processESI(body, null, VARS);
 }
 
 
@@ -343,84 +340,82 @@ const reg_esi_condition_separator = /\s+(\|\||\&\&)\s+/g;
  * @param {Object} VARS
  * @returns {Boolean}
  */
-function processESICondition( test, VARS ){
+function processESICondition(test, VARS) {
 
-	// There can be multiple tests
-	var tests = test.split(reg_esi_condition_separator);
-	var bool, matches;
+  // There can be multiple tests
+  var tests = test.split(reg_esi_condition_separator);
+  var bool, matches;
 
-	for ( var i=0; i< tests.length; i++ ){
+  for (var i = 0; i < tests.length; i++) {
 
-		// Trim white spaces
-		test = tests[i].replace(reg_trim,'');
-
-
-		// Logical operator
-		if( test === '&&' && bool === false ){
-			break;
-		}
-		else if ( test === '||' && bool === true ){
-			break;
-		}
+    // Trim white spaces
+    test = tests[i].replace(reg_trim, '');
 
 
-		// Does it have a negation operator
-		var negatory = test[0] === '!';
-		test.replace(/^\!/,'');
+    // Logical operator
+    if (test === '&&' && bool === false) {
+      break;
+    } else if (test === '||' && bool === true) {
+      break;
+    }
 
-		// Match
-		var m = test.match(reg_esi_condition);
 
-		// Boolean condition
-		if( !m ){
+    // Does it have a negation operator
+    var negation = test[0] === '!';
+    test.replace(/^!/, '');
 
-			bool = !!DictionaryReplace( test, VARS );
-		}
-		else{
+    // Match
+    var m = test.match(reg_esi_condition);
 
-			// Comparison Operators
-			var a = DictionaryReplace( m[1], VARS );
-			var operator = m[2];
-			var b = DictionaryReplace( m[4], VARS );
+    // Boolean condition
+    if (!m) {
+      bool = !!DictionaryReplace(test, VARS);
 
-			// Compare the two
-			switch(operator){
-				case '=':
-				case '==':
-				case '===':
-					bool = a === b;
-					break;
-				case '!=':
-				case '!==':
-					bool = a !== b;
-					break;
-				case '>=':
-					bool = a >= b;
-					break;
-				case '<=':
-					bool = a <= b;
-					break;
-				case 'has':
-					bool = a.indexOf(b) > -1;
-					break;
-				case 'has_i':
-					bool = a.toLowerCase().indexOf(b.toLowerCase()) > -1;
-					break;
-				case 'matches':
-				case 'matches_i':
+    } else {
 
-					var reg = new RegExp( b, operator === 'matches_i' ? 'i' : '' );
-					matches = a.match(reg);
-					bool = !!matches;
-					break;
-			}
-		}
+      // Comparison Operators
+      var a = DictionaryReplace(m[1], VARS);
+      var operator = m[2];
+      var b = DictionaryReplace(m[4], VARS);
 
-		// Is there a negatory operator
-		bool = negatory ^ bool;
-	}
+      // Compare the two
+      switch (operator) {
+        case '=':
+        case '==':
+        case '===':
+          bool = a === b;
+          break;
+        case '!=':
+        case '!==':
+          bool = a !== b;
+          break;
+        case '>=':
+          bool = a >= b;
+          break;
+        case '<=':
+          bool = a <= b;
+          break;
+        case 'has':
+          bool = a.indexOf(b) > -1;
+          break;
+        case 'has_i':
+          bool = a.toLowerCase().indexOf(b.toLowerCase()) > -1;
+          break;
+        case 'matches':
+        case 'matches_i':
 
-	return bool ? matches || true : false;
+          var reg = new RegExp(b, operator === 'matches_i' ? 'i' : '');
+          matches = a.match(reg);
+          bool = !!matches;
+          break;
+      }
+    }
+
+    // Is there a negation operator
+    bool = negation ^ bool;
+  }
+
+  return bool ? matches || true : false;
 }
 
 
@@ -430,17 +425,16 @@ function processESICondition( test, VARS ){
  * @param VARS
  * @returns {*}
  */
-function processESIExpression(txt, VARS){
+function processESIExpression(txt, VARS) {
 
-	// Tidy
-	if( !txt && txt.length === 0 ){
-		return '';
-	}
-	else if(txt[0]==="'"){
-		return txt.replace(/^\'|\'$/g,'');
-	}
+  // Tidy
+  if (!txt && txt.length === 0) {
+    return '';
+  } else if (txt[0] === "'") {
+    return txt.replace(/^\'|\'$/g, '');
+  }
 
-	return DictionaryReplace( txt, VARS );
+  return DictionaryReplace(txt, VARS);
 
 }
 
@@ -451,43 +445,43 @@ function processESIExpression(txt, VARS){
  * @param {Function} resolve Resolver of the parent Promise
  * @param {Function} reject Rejector of the parent Promise
  */
-function makeRequest( url, resolve, reject ){
+function makeRequest(url, resolve, reject) {
 
-	//log( log.INFO, url );
+  //log(log.INFO, url);
 
-	// Get the resource
+  // Get the resource
 
-	http.get( url, function(res){
+  http.get(url, function(res) {
 
-		var body='';
+    var body = '';
 
-		// Reject the promise if the response Code is >= 400
+    // Reject the promise if the response Code is >= 400
 
-		if(res.statusCode >= 400){
+    if (res.statusCode >= 400) {
 
-			reject( url );
+      reject(url);
 
-			return;
-		}
+      return;
+    }
 
 
-		// If not read the data and pass through ESI
+    // If not read the data and pass through ESI
 
-		res.on('data', function(buffer){
-			body += buffer;
-		});
+    res.on('data', function(buffer) {
+      body += buffer;
+    });
 
-		res.on('end', function(){
+    res.on('end', function() {
 
-			// Resolve the content
-			resolve( body );
+      // Resolve the content
+      resolve(body);
 
-		});
+    });
 
-	}).on('error', function(e){
+  }).on('error', function(e) {
 
-		reject( url );
-	});
+    reject(url);
+  });
 }
 
 
@@ -498,20 +492,20 @@ const reg_esi_tag_global = new RegExp(reg_esi_tag.source, 'gi');
  * @param {string} str
  * @returns {Array}
  */
-function splitText(str){
+function splitText(str) {
 
-	var i=0,
-		m,
-		r=[];
+  var i = 0;
+  var m;
+  var r = [];
 
-	while( ( m = reg_esi_tag_global.exec(str) ) ){
-		r.push(str.slice(i,m.index));
-		i = m.index+m[0].length;
-		r.push(m[0]);
-	}
-	r.push(str.slice(i,str.length));
+  while (m = reg_esi_tag_global.exec(str)) {
+    r.push(str.slice(i, m.index));
+    i = m.index + m[0].length;
+    r.push(m[0]);
+  }
+  r.push(str.slice(i, str.length));
 
-	return r;
+  return r;
 }
 
 
@@ -522,16 +516,16 @@ const reg_attrs = /\b([^\s=]+)(=(('|")(.*?[^\\]|)\4|[^\s]+))?/ig;
  * @param {string} str
  * @returns {Object}
  */
-function getAttributes(str){
+function getAttributes(str) {
 
-	var m,
-        r={};
+  var m,
+    r = {};
 
-	while((m = reg_attrs.exec(str))){
-		r[m[1]] = ( m[5] !== undefined ? m[5] : m[3] );
-	}
+  while (m = reg_attrs.exec(str)) {
+    r[m[1]] = (m[5] !== undefined ? m[5] : m[3]);
+  }
 
-	return r;
+  return r;
 }
 
 
@@ -547,17 +541,17 @@ const reg_esi_variable = /\$\((.*?)(?:\{([\d\w]+)\})?\)/g;
  * @returns {XML|string|void}
  * @constructor
  */
-function DictionaryReplace(str, hash){
-	return str.replace( reg_esi_variable, function (m, key, subkey){
-		if(key in hash){
-			var val = hash[key];
-			if( subkey ){
-				val = val instanceof Object ? val[subkey] : '';
-			}
-			return val === undefined ? '' : val;
-		}
-		return '';
-	});
+function DictionaryReplace(str, hash) {
+  return str.replace(reg_esi_variable, function(m, key, subkey) {
+    if (key in hash) {
+      var val = hash[key];
+      if (subkey) {
+        val = val instanceof Object ? val[subkey] : '';
+      }
+      return val === undefined ? '' : val;
+    }
+    return '';
+  });
 }
 
 
@@ -567,24 +561,25 @@ function DictionaryReplace(str, hash){
  * @param label
  * @param value
  */
-function log( state, label, value){
+function log(state, label, value) {
 
-	if( module.exports.debug ){
-		console.log( state, label, value !== undefined ? value : '' );
-	}
+  if (module.exports.debug) {
+    console.log(state, label, value !== undefined ? value : '');
+  }
 
 }
-(function(){
+(function() {
 
-	var states = {
-		'INFO' : 2,
-		'FAIL' : 1,
-		'WARN' : 4
-	};
-	for( var x in states ){
-		var color = states[x];
-		log[x] = "\x1B[33mESI\x1B[39m: \x1b[9"+color+"m%s\x1B[39m \x1b[3"+color+"m%s\x1B[39m";
-	}
+  var states = {
+    'INFO': 2,
+    'FAIL': 1,
+    'WARN': 4
+  };
+  for (var x in states) {
+    var color = states[x];
+    log[x] = '\x1B[33mESI\x1B[39m: \x1b[9' + color +
+      'm%s\x1B[39m \x1b[3' + color + 'm%s\x1B[39m';
+  }
 
 })();
 
