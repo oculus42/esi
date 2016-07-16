@@ -496,14 +496,15 @@ function splitText(str){
 
 
 
+function getAttributes(str){
 
 // getAttributes
 
 var reg_attrs = /\b([^\s=]+)(=(('|")(.*?[^\\]|)\4|[^\s]+))?/ig;
 
-function getAttributes(str, undefined){
+	var m,
+        r={};
 
-	var m,r={};
 	while((m = reg_attrs.exec(str))){
 		r[m[1]] = ( m[5] !== undefined ? m[5] : m[3] );
 	}
