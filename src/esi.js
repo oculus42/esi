@@ -33,10 +33,13 @@ function processESI(body, encoding, VARS, isInEsiTag) {
   const bodyNoComments = bodyString.replace(reg_esi_comments, '<esi:vars>$1</esi:vars>');
 
 
-  // Split the current string into parts, some including the ESI fragment and then the bits in between
-  // Loop through and process each of the ESI fragments, mapping them back to a parts array containing strings and the Promise objects
+  // Split the current string into parts,
+  // some including the ESI fragment and then the bits in between
+  // Loop through and process each of the ESI fragments, mapping them
+  // back to a parts array containing strings and the Promise objects
   const parts = splitText(bodyNoComments).map(function(bodyFragment) {
-    // Only process ESI tags for matching regex or if current body is in previous ESI tag.
+    // Only process ESI tags for matching regex
+    // or if current body is in previous ESI tag.
     if (insideTag || bodyFragment.match(reg_esi_tag)) {
       return processESITags.call(VARS, bodyFragment);
     }
@@ -55,7 +58,8 @@ function processESI(body, encoding, VARS, isInEsiTag) {
 
 /**
  * Process ESI tags
- * Given a section of the body string, if it is a esi tag process it and return a Promise object, otherwise return a string.
+ * Given a section of the body string, if it is a esi tag process it
+ * and return a Promise object, otherwise return a string.
  * @param {string} str
  * @returns {string|Promise}
  */
