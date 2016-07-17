@@ -11,6 +11,7 @@ const Promise = require('promise');
 // Expressions used by main function to process ESI
 const reg_esi_tag = /<(esi\:[a-z]+)\b([^>]+[^\/>])?(?:\/|>([\s\S]*?)<\/\1)>/i;
 const reg_esi_comments = /<\!--esi\b([\s\S]*?)-->/gi;
+const reg_esi_eval = /<esi\:eval/;
 
 
 /**
@@ -24,26 +25,73 @@ const reg_esi_comments = /<\!--esi\b([\s\S]*?)-->/gi;
  */
 function processESI(body, encoding, VARS, isInEsiTag) {
 
-  const insideTag = isInEsiTag !== undefined ? isInEsiTag : true;
-
   // Format incoming
   const bodyString = (typeof body === 'string') ? body : (body || '').toString();
 
   // Trim any <!--esi --> comment tags off
   const bodyNoComments = bodyString.replace(reg_esi_comments, '<esi:vars>$1</esi:vars>');
 
+  const context = VARS || {};
+  const insideTag = isInEsiTag !== undefined ? isInEsiTag : true;
 
   // Split the current string into parts,
   // some including the ESI fragment and then the bits in between
-  // Loop through and process each of the ESI fragments, mapping them
-  // back to a parts array containing strings and the Promise objects
-  const parts = splitText(bodyNoComments).map(function(bodyFragment) {
+  return processESIFragments(splitText(bodyNoComments), context, insideTag);
+
+}
+
+/**
+ * Loop through and process each of the ESI fragments, mapping them
+ * back to a parts array containing strings and the Promise objects
+ * Split on esi:eval, which require synchronous behavior, so following
+ * tags are executed after the eval completes
+ *
+ * @param {Array} fragments
+ * @param {Object} context
+ * @param {Boolean} insideTag
+ * @returns {Promise}
+ */
+function processESIFragments(fragments, context, insideTag) {
+
+  const evalSet = fragments.map(function(fragment, idx, array) {
+
+    if (fragment.match(reg_esi_eval)) {
+
+      // Get all the tags after the eval;
+      var remainder = array.splice(idx + 1);
+
+      return processESITags.call(context, fragment).then(function(response) {
+
+        if (remainder.length === 0) {
+          return response;
+        }
+
+        return processESIFragments(remainder, context, insideTag)
+          .then(function(innerResponse) {
+            // Concatenate the two responses together.
+            return response + innerResponse;
+          });
+      });
+    }
+
+    return fragment;
+  });
+
+
+  const parts = evalSet.map(function(fragment) {
+
+    // Skip processed fragments from esi:eval
+    if (typeof fragment === 'object') {
+      return fragment;
+    }
+
+    console.log(typeof fragment, '\n', fragment);
     // Only process ESI tags for matching regex
     // or if current body is in previous ESI tag.
-    if (insideTag || bodyFragment.match(reg_esi_tag)) {
-      return processESITags.call(VARS, bodyFragment);
+    if (insideTag || fragment.match(reg_esi_tag)) {
+      return processESITags.call(context, fragment);
     }
-    return bodyFragment;
+    return fragment;
   });
 
   // Create the mother of all promises.
@@ -89,6 +137,11 @@ function processESITags(str) {
     // Replaces the content
     case 'esi:include':
       return processESIInclude(attrs, body, this);
+
+    // Replaces the content
+    case 'esi:eval':
+      // TODO - Actual Eval processing.
+      return Promise.resolve('');
 
     // Replaces the content
     case 'esi:try':
@@ -189,7 +242,6 @@ function processESIInclude(attrs, body, VARS) {
   // Clone the VARS
   // Set the prototype
   VARS = Object.create(VARS || {});
-
 
   if (!attrs.src) {
 
